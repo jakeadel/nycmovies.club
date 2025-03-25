@@ -12,12 +12,12 @@ def pull_html():
         'User-Agent': 'nycmovies.club'
     }
     html = requests.get(URL, headers=headers)
-    print(html.text)
     if not html:
         print(f"{html.status_code}")
         raise Exception(f"html blank from {NAME}")
     with open(f"html/{HTML_FILE_NAME}", "w") as file:
         file.write(html.text)
+
 
 def parse_html():
     html = None
@@ -35,12 +35,11 @@ def parse_html():
         for listing in listings:
             title = listing.find('h4').text
             times = listing.find_all("li")
-            print("HERE", times)
+
             for time in times:
-                print(time.find("a")["href"], time.text)
                 link = time.find("a")["href"]
                 time = time.text
-                print(date, month, time, current_year)
+
                 date_string = f"{date} {month} {time} {current_year}"
                 formatted_date = datetime.strptime(date_string, "%d %B %I.%M%p %Y")
                 showtime_year = current_year
@@ -55,5 +54,4 @@ def parse_html():
                     link
                 ])
     
-    print(f"{showtimes=}")
     return showtimes

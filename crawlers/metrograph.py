@@ -9,8 +9,10 @@ HTML_FILE_NAME = "metrograph.html"
 DB_THEATER_ID = 1
 
 def pull_html():
-    html = requests.get(URL)
-    print(html.text)
+    headers = {
+        'User-Agent': 'nycmovies.club'
+    }
+    html = requests.get(URL, headers=headers)
     if not html:
         print(f"{html.status_code}")
         raise Exception(f"html blank from {NAME}")
@@ -21,21 +23,18 @@ def parse_html():
     html = None
     with open(f"html/{HTML_FILE_NAME}", "r") as file:
         html = file.read()
-    print(len(html))
+
     soup = bs(html, "html.parser")
     titles = soup.find_all(class_='movie_title')
     showings = [x.find_all(class_='film_day') for x in soup.find_all(class_='showtimes')]
 
-
     links = []
     for title in titles:
-        print(title)
         link = title.find("a")["href"]
         links.append(link)
 
     showtimes = []
 
-    print(len(titles), len(showings), len(links))
     assert len(titles) == len(showings) == len(links)
 
     current_year = datetime.now().year
@@ -43,7 +42,13 @@ def parse_html():
 
     for [title, showing, link] in zip(titles, showings, links):
         for show in showing:
-            date = datetime.strptime(show.text, "%A %B %d %I:%M%p")
+            try:
+                date = datetime.strptime(show.text, "%A %B %d %I:%M%p")
+            except ValueError as e:
+                print(show.text.split(' '))
+                print("Error converting date:", show.text, e)
+                print(f"{title=}, {show=} skipped\n")
+                continue
 
             showtime_year = current_year
             if date.month < current_month:
@@ -55,9 +60,7 @@ def parse_html():
                 DB_THEATER_ID,
                 title.text,
                 final_date, 
-                link
+                "https://metrograph.com" + link
             ])
-
-    print(f"{showtimes=}")
 
     return showtimes

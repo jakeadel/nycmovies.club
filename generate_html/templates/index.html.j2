@@ -1,0 +1,76 @@
+<html lang="en">
+    <head>
+        <title>NYC MOVIES</title>
+        <meta charset="UTF-8">
+        <meta namd="viewport" content="width=device-width, initial-scale=1.0">
+        <script>
+            document.addEventListener("DOMContentLoaded", () => {
+                const today = new Date().toISOString().split("T")[0]; // Get YYYY-MM-DD format
+                const nextMonth = new Date();
+                nextMonth.setMonth(nextMonth.getMonth() + 1);
+                const maxDate = nextMonth.toISOString().split("T")[0]; // One month ahead
+
+                const startDate = document.getElementById("startDate");
+                const endDate = document.getElementById("endDate");
+
+                // Set initial values
+                Object.assign(startDate, { min: today, max: maxDate, value: today });
+                Object.assign(endDate, { min: today, max: maxDate });
+
+                // Update `endDate` constraints when `startDate` changes
+                startDate.addEventListener("change", () => {
+                    endDate.min = startDate.value;
+                    if (endDate.value < startDate.value) {
+                        endDate.value = startDate.value;
+                    }
+                });
+
+                // Add listeners for expanding showtimes
+                document.querySelectorAll(".showtimes-button").forEach(button => {
+                    button.addEventListener("click", () => {
+                        const movieDiv = button.closest(".movie");
+                        const theatersDiv = movieDiv.querySelector(".theaters");
+                        theatersDiv.classList.toggle("hidden");
+                        movieDiv.classList.toggle("expanded");
+                    });
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <div class="header">
+            <h1 class="page-title font-bold text-center text-5xl">NYC MOVIES . CLUB</h1>
+            <label>Start Date:</label>
+            <input type="date" id="startDate">
+            <br />
+            <label>End Date:</label>
+            <input type="date" id="endDate">
+        </div>
+        <div class="content">
+            <div id="in-theaters-now" class="in-theaters-now font-bold text-center self-center ml-auto mt-10 mr-auto p-4 border-red-600 bg-orange-100 border-t-2 border-l-2 border-r-2 rounded-t-xl text-3xl w-fit">NOW PLAYING IN NYC</div>
+            <div id="movies" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 place-items-center items-start ml-10 mr-10 p-5 bg-orange-100 rounded-xl border-2 border-red-600">
+            {% for movie in movies %}
+                <div class="movie flex flex-col h-full items-center max-w-[250px] w-[250px]" id="movie-{{ movie.id }}">
+                    <img class="image border-black border-6 w-full" src="/images/{{ movie.image }}.png" alt="{{ movie.title }} Poster">
+                    <h1 class="movie-title text-3xl font-bold text-center rounded-xs mt-1">{{ movie.title }}</h1>
+                    <button class="showtimes-button text-2xl text-center w-full hover:cursor-pointer mt-auto sm:mt-1 border-black border-1 font-semibold rounded-xs shadow-2xl bg-pink-100">
+                        * Showtimes *
+                    </button>
+                    <div class="theaters hidden overflow-y-scroll scrollbar border border-black w-full mt-1 rounded-xs scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 max-h-50 bg-white">
+                    {% for theater in movie.theaters %}
+                        <div class="theater border border-black-100 rounded-xs m-1 bg-pink-100">
+                            <a href="{{ theater.link }}" class="theater underline text-lg font-bold pl-1">{{ theater.name }}</a>
+                            <div class="showtimes grid grid-cols-3 gap-2 text-m text-center">
+                                {% for showtime in theater.showtimes %}
+                                    <a href="{{ showtime.link }}" class="showtime underline text-m">{{ showtime.time }}</a>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        </div>
+    </body>
+</html>

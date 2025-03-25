@@ -1,0 +1,3 @@
+List tables: .schema
+
+Describe table: pragma table_info(<table>)
