@@ -4,11 +4,9 @@ from .metrograph import parse_html as metrograph_parse, pull_html as metrograph_
 
 
 def pull_all():
-    return {
-        "ifc": ifc_pull(),
-        "quad": quad_pull(),
-        "metrograph": metrograph_pull(),
-    }
+    ifc_pull()
+    quad_pull()
+    metrograph_pull()
 
 
 def parse_all():

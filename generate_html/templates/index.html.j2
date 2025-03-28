@@ -51,10 +51,10 @@
             <div id="movies" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 place-items-center items-start ml-10 mr-10 p-5 bg-orange-100 rounded-xl border-2 border-red-600">
             {% for movie in movies %}
                 <div class="movie flex flex-col h-full items-center max-w-[250px] w-[250px]" id="movie-{{ movie.id }}">
-                    <img class="image border-black border-6 w-full" src="/images/{{ movie.image }}.png" alt="{{ movie.title }} Poster">
+                    <img class="image border-black border-6 w-full" src="{{ movie.image }}" alt="{{ movie.title }} Poster">
                     <h1 class="movie-title text-3xl font-bold text-center rounded-xs mt-1">{{ movie.title }}</h1>
                     <button class="showtimes-button text-2xl text-center w-full hover:cursor-pointer mt-auto sm:mt-1 border-black border-1 font-semibold rounded-xs shadow-2xl bg-pink-100">
-                        * Showtimes *
+                          Showtimes ^
                     </button>
                     <div class="theaters hidden overflow-y-scroll scrollbar border border-black w-full mt-1 rounded-xs scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 max-h-50 bg-white">
                     {% for theater in movie.theaters %}
@@ -72,5 +72,6 @@
             {% endfor %}
             </div>
         </div>
+        <div>All images are courtesy of movieDB *link here*a</div>
     </body>
 </html>
