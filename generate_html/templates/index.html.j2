@@ -2,7 +2,8 @@
     <head>
         <title>NYC MOVIES</title>
         <meta charset="UTF-8">
-        <meta namd="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="./styles/style.css" rel="stylesheet">
         <script>
             document.addEventListener("DOMContentLoaded", () => {
                 const today = new Date().toISOString().split("T")[0]; // Get YYYY-MM-DD format
@@ -26,6 +27,7 @@
                 });
 
                 // Add listeners for expanding showtimes
+                /*
                 document.querySelectorAll(".showtimes-button").forEach(button => {
                     button.addEventListener("click", () => {
                         const movieDiv = button.closest(".movie");
@@ -34,6 +36,7 @@
                         movieDiv.classList.toggle("expanded");
                     });
                 });
+                */
             });
         </script>
     </head>
@@ -47,22 +50,22 @@
             <input type="date" id="endDate">
         </div>
         <div class="content">
-            <div id="in-theaters-now" class="in-theaters-now font-bold text-center self-center ml-auto mt-10 mr-auto p-4 border-red-600 bg-orange-100 border-t-2 border-l-2 border-r-2 rounded-t-xl text-3xl w-fit">NOW PLAYING IN NYC</div>
-            <div id="movies" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 place-items-center items-start ml-10 mr-10 p-5 bg-orange-100 rounded-xl border-2 border-red-600">
+            <div id="in-theaters-now" class="in-theaters-now">NOW PLAYING IN NYC</div>
+            <div id="movies" class="movies">
             {% for movie in movies %}
-                <div class="movie flex flex-col h-full items-center max-w-[250px] w-[250px]" id="movie-{{ movie.id }}">
-                    <img class="image border-black border-6 w-full" src="{{ movie.image }}" alt="{{ movie.title }} Poster">
-                    <h1 class="movie-title text-3xl font-bold text-center rounded-xs mt-1">{{ movie.title }}</h1>
-                    <button class="showtimes-button text-2xl text-center w-full hover:cursor-pointer mt-auto sm:mt-1 border-black border-1 font-semibold rounded-xs shadow-2xl bg-pink-100">
-                          Showtimes ^
+                <div class="movie" id="movie-{{ movie.id }}">
+                    <img class="image" src="{{ movie.image }}" alt="{{ movie.title }} Poster">
+                    <h1 class="movie-title">{{ movie.title }}</h1>
+                    <button class="showtimes-button">
+                        Showtimes ^
                     </button>
-                    <div class="theaters hidden overflow-y-scroll scrollbar border border-black w-full mt-1 rounded-xs scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100 max-h-50 bg-white">
+                    <div class="theaters">
                     {% for theater in movie.theaters %}
-                        <div class="theater border border-black-100 rounded-xs m-1 bg-pink-100">
-                            <a href="{{ theater.link }}" class="theater underline text-lg font-bold pl-1">{{ theater.name }}</a>
-                            <div class="showtimes grid grid-cols-3 gap-2 text-m text-center">
+                        <div class="theater">
+                            <a href="{{ theater.link }}" class="theater">{{ theater.name }}</a>
+                            <div class="showtimes">
                                 {% for showtime in theater.showtimes %}
-                                    <a href="{{ showtime.link }}" class="showtime underline text-m">{{ showtime.time }}</a>
+                                    <a href="{{ showtime.link }}" class="showtime">{{ showtime.time }}</a>
                                 {% endfor %}
                             </div>
                         </div>

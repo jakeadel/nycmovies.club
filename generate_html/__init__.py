@@ -1,3 +1,3 @@
-from .generate import generate_html
+from .generate import handle_generate
 
-__all__ = ["generate_html"]
+__all__ = ["handle_generate"]

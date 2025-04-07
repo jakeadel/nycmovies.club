@@ -15,13 +15,13 @@ def pull_html():
     if not html:
         print(f"{html.status_code}")
         raise Exception(f"html blank from {NAME}")
-    with open(f"html/{HTML_FILE_NAME}", "w") as file:
+    with open(f"crawlers/html/{HTML_FILE_NAME}", "w") as file:
         file.write(html.text)
 
 
 def parse_html():
     html = None
-    with open(f"html/{HTML_FILE_NAME}", "r") as file:
+    with open(f"crawlers/html/{HTML_FILE_NAME}", "r") as file:
         html = file.read()
     print(len(html))
     soup = bs(html, "html.parser")

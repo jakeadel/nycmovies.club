@@ -1,5 +1,5 @@
-from .movie_data import get_poster, get_wikipedia_link
+from .movie_data import get_movie_details, get_wikipedia_link
 
 __all__ = [
-    "get_poster", "get_wikipedia_link"
+    "get_movie_details", "get_wikipedia_link"
 ]

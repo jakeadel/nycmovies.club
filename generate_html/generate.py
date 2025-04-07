@@ -1,11 +1,12 @@
 import sqlite3
 from collections import defaultdict
+import datetime
 from jinja2 import Environment, FileSystemLoader
 
-def get_showtimes_for_today(cursor, table, db_path="movies.db"):
+def get_showtimes_for_today(cursor, table, date, db_path="movies.db"):
     query = f"""
         SELECT
-            s.name AS title,
+            s.title,
             s.showtime,
             s.link AS showtime_link,
             s.theater_id,
@@ -14,14 +15,19 @@ def get_showtimes_for_today(cursor, table, db_path="movies.db"):
             t.address as theater_address,
             m.id AS movie_id,
             m.wiki_link,
-            m.image
+            m.image,
+            m.runtime,
+            m.directors
         FROM {table} s
         JOIN theaters t ON s.theater_id = t.id
-        LEFT JOIN movies m ON s.name = m.title
+        LEFT JOIN movies m ON s.title = m.title
+        WHERE date(s.showtime) = date(?)
         ORDER BY s.showtime ASC
     """
 
-    rows = cursor.execute(query).fetchall()
+    rows = cursor.execute(query, (date,)).fetchall()
+    if len(rows) < 1:
+        raise Exception("No rows found for:", date, "in table:", table)
     columns = [desc[0] for desc in cursor.description]
     print(rows[0])
 
@@ -38,10 +44,12 @@ def group_movies_by_title(showtimes):
         grouped[title]["id"] = row["movie_id"]
         grouped[title]["wiki_link"] = row["wiki_link"]
         grouped[title]["image"] = row["image"]
+        grouped[title]["directors"] = row["directors"]
+        grouped[title]["runtime"] = format_runtime(row["runtime"])
         grouped[title]["theaters"].append({
             "name": row["theater_name"],
             "link": row["theater_url"],
-            "showtimes": [{"time": row["showtime"], "link": row["showtime_link"]}]
+            "showtimes": [{"time": row["showtime"], "display_time": format_date(row["showtime"]), "link": row["showtime_link"]}]
         })
 
     # Group by theater
@@ -57,27 +65,40 @@ def group_movies_by_title(showtimes):
     # Sort by showtime, earliest first
     return sorted(grouped.values(), key=lambda m: m["theaters"][0]["showtimes"][0]["time"])
 
-conn = sqlite3.connect("./movies.db")
-cursor = conn.cursor()
+
+def format_date(date_str):
+    date = datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+    formatted_date = date.strftime("%I:%M%p").lower()
+    if (formatted_date[0] == '0'):
+        formatted_date = formatted_date[1:]
+    return formatted_date
+
+
+def format_runtime(minutes):
+    if not minutes or minutes == '0':
+        return '-'
+    hours = int(minutes) // 60
+    minutes = int(minutes) % 60
+    return f"{hours:01}:{minutes:02}"
+
+
 def generate_html(movie_data, showtimes):
     env = Environment(loader=FileSystemLoader("generate_html/templates"))
     template = env.get_template("index.html.j2")
     table_template = env.get_template("table.html.j2")
-
-    with open("generate_html/output/index.html", "w") as f:
+    print(movie_data[0])
+    with open("src/index.html", "w") as f:
         f.write(template.render(movies=movie_data))
     
-    with open("generate_html/output/table.html", "w") as f:
-        f.write(table_template.render(movies=showtimes))
+    with open("src/table.html", "w") as f:
+        f.write(table_template.render(movies=movie_data))
 
 
-def handle_generate(cursor, table, database):
-    showtimes = get_showtimes_for_today(cursor, table)
+def handle_generate(cursor, table, date):
+    showtimes = get_showtimes_for_today(cursor, table, date)
     grouped = group_movies_by_title(showtimes)
     generate_html(grouped, showtimes)
 
-
-handle_generate(cursor, 'showtimes_3_24_2025', "./movies.db")
 
 """
 Need movies to look like:

@@ -1,0 +1,23 @@
+Frontend:
+    Bugs:
+        - Make styles work
+        - Dates need to be parsed nicely
+
+    To do:
+        - Be able to build for previous days via cli arg
+        - Maybe like a misty pastel background
+        - Choose day for date options
+        - And it will roll you to that day?
+        - Minimal view with more of a spreadsheet look
+        - Spreadsheet showtimes view?
+        - nice mobile version
+
+Backend:
+    Bugs:
+        - Metrograph handle multiple times
+    To do:
+        - wburg cinema
+
+Thoughts:
+    - Maybe everything should just be daily, and you can select which day you want (maybe pre-generate all that html)
+        - Maybe the date and change date button stick to the top when you scroll down

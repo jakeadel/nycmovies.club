@@ -2,40 +2,62 @@
     <head>
         <title>NYC MOVIES</title>
         <meta charset="UTF-8">
-        <meta namd="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="../src/styles/output.css" rel="stylesheet">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="styles/style.css" rel="stylesheet">
     </head>
-    <body>
-        <div class="header">
-            <h1 class="page-title font-bold text-center text-5xl">NYC MOVIES . CLUB</h1>
-            <label>Start Date:</label>
-            <input type="date" id="startDate">
-            <br />
-            <label>End Date:</label>
-            <input type="date" id="endDate">
+    <body class="bg-gray-100">
+        <div class="header p-4">
+            <h1 class="page-title font-bold text-center text-5xl bg-red-100 py-4"><a href="https://nycmovies.club">NYC MOVIES . CLUB</a></h1>
+            <h1>Films showing April 6, 2025</h1>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 mt-4 text-center">
+                <div>
+                    <label for="startDate">Change Date:</label>
+                    <input type="date" id="startDate" class="border rounded px-2 py-1">
+                </div>
+            </div>
         </div>
-        <div class="content overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Showtime</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Theater</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Borough</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Theater Address</th>
-                    </tr>
-                </thead>    
-                <tbody class="bg-white divide-y divide-gray-200">
-                {% for movie in movies %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><a href="{{ movie.wiki_link }}">{{ movie.title }}</a></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ movie.showtime }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700"><a href="{{ movie.theater_url }}">{{ theater_name }}</a></td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">Brooklyn</th>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">38 South 3rd St., Brooklyn NY, 11249</th> <!--Maybe this can be a Google Maps link-->
-                    </tr>
-                </tbody>
-            </table>
+
+        <div class="content px-4 py-6 grid md:grid-cols-2 grid-cols-1 justify-center items-center gap-4">
+        {% for movie in movies %}
+            <div class="movie-wrapper mx-w-full self-start">
+                <div class="movie rounded w-full max-w-3xl ml-auto mr-auto bg-white shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col sm:flex-row overflow-hidden">
+                    
+                    <div class="image-wrapper p-1 mt-auto mb-auto sm:h-auto sm:flex-shrink-0">
+                        <img class="object-cover" 
+                            src="{{ movie.image}}" 
+                            alt="Poster">
+                    </div> 
+                    <div class="details p-4 flex-1 flex flex-col">
+                        <div class="mb-3">
+                            <div class="title text-2xl font-semibold text-gray-800">{{ movie.title }}</div>
+                            <div class="text-sm text-gray-600 mt-2">
+                                <div>Director: <span class="text-gray-800 font-medium">{{ movie.directors }}</span></div>
+                                <div>Runtime: <span class="text-gray-800 font-medium">{{ movie.runtime }}</span></div>
+                            </div>
+                        </div>
+                        <div class="border-t border-gray-300 my-2"></div>
+                        <div class="flex flex-col gap-3">
+                            <div class="text-sm font-medium text-gray-600">Showtimes</div>
+                            <div>
+                            {% for theater in movie.theaters %}
+                                <div class="text-xs font-semibold text-gray-700"><a href="{{ theater.link }}">{{ theater.name }}</a></div>
+                                <div class="flex flex-wrap gap-2 mt-1">
+                                {% for showtime in theater.showtimes%}
+                                    <a href="{{ showtime.link }}" class="bg-blue-600 text-white text-sm px-3 py-1 rounded-lg hover:bg-blue-700 transition">{{ showtime.display_time }}</a>
+                                {% endfor %}
+                                </div>
+                            {% endfor %}
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <button class="w-full text-center text-blue-600 text-sm font-medium py-2 border border-blue-600 rounded-lg hover:bg-blue-50 transition">
+                                See showtimes for all dates
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
         </div>
     </body>
 </html>

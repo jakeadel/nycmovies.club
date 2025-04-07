@@ -3,8 +3,9 @@ import sqlite3
 from datetime import datetime
 import time
 
-from utils import get_poster, get_wikipedia_link
+from utils import get_movie_details, get_wikipedia_link
 from crawlers import pull_all, parse_all
+from generate_html import handle_generate
 
 
 def create_daily_table(cursor, table):
@@ -25,7 +26,7 @@ def create_daily_table(cursor, table):
 def insert_showtimes(cursor, table, showtimes):
     cursor.executemany(f"""
         INSERT INTO {table} 
-            (theater_id, name, showtime, link) 
+            (theater_id, title, showtime, link) 
         VALUES 
             (?, ?, ?, ?);
     """, showtimes)
@@ -51,14 +52,21 @@ def initialize_movie(cursor, title):
         print(e)
     
     try:
-        poster = get_poster(title)
+        res = get_movie_details(title)
+        print("YES", res)
+        poster = res.get('poster')
+        runtime = res.get('runtime')
+        directors = res.get('directors')
+        print(poster, runtime, directors)
     except Exception as e:
         poster = None
-        print(f"Unable to fetch poster for: {title}")
+        runtime = None
+        directors = None
+        print(f"Unable to fetch movie_details for: {title}")
         print(e)
 
-    sql = "INSERT INTO movies (title, wiki_link, image) VALUES (?, ?, ?);"
-    cursor.execute(sql, (title, wiki_link, poster,))
+    sql = "INSERT INTO movies (title, wiki_link, image, runtime, directors) VALUES (?, ?, ?, ?, ?);"
+    cursor.execute(sql, (title, wiki_link, poster, runtime, directors))
 
 
 def handle_showtimes(cursor, showtimes_table, showtimes):
@@ -68,13 +76,13 @@ def handle_showtimes(cursor, showtimes_table, showtimes):
         if title not in seen and not is_movie_initialized(cursor, title):
             seen.add(title)
             initialize_movie(cursor, title)
-            time.sleep(0.1)
+            time.sleep(0.2)
     
     insert_showtimes(cursor, showtimes_table, showtimes)
 
 
 def handle_crawl():
-    conn = sqlite3.connect("../movies.db")
+    conn = sqlite3.connect("movies.db")
     cursor = conn.cursor()
     date = datetime.now()
     table = f"showtimes_{date.month}_{date.day}_{date.year}"
@@ -90,7 +98,16 @@ def handle_crawl():
 
 
 def handle_build():
-    pass
+    conn = sqlite3.connect("movies.db")
+    cursor = conn.cursor()
+    date = datetime.now()
+    table = f"showtimes_{date.month}_{date.day}_{date.year}"
+    formatted_date = date.strftime('%Y-%m-%d')
+    print("DATE", formatted_date)
+
+    handle_generate(cursor, table, date)
+
+    conn.close()
 
 
 if __name__ == "__main__":
