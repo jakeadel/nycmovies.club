@@ -23,3 +23,5 @@ jobs:
 
       - name: Run build script
         run: python main.py build
+
+      
