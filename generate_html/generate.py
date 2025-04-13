@@ -3,6 +3,12 @@ from collections import defaultdict
 import datetime
 from jinja2 import Environment, FileSystemLoader
 
+def get_all_theaters(cursor):
+    query = "SELECT name FROM theaters"
+    rows = cursor.execute(query, ()).fetchall()
+    rows = [x[0] for x in rows]
+    return rows
+
 def get_showtimes_for_today(cursor, table, date, db_path="movies.db"):
     query = f"""
         SELECT
@@ -29,7 +35,6 @@ def get_showtimes_for_today(cursor, table, date, db_path="movies.db"):
     if len(rows) < 1:
         raise Exception("No rows found for:", date, "in table:", table)
     columns = [desc[0] for desc in cursor.description]
-    print(rows[0])
 
     results = [dict(zip(columns, row)) for row in rows]
     return results
@@ -82,22 +87,31 @@ def format_runtime(minutes):
     return f"{hours:01}:{minutes:02}"
 
 
-def generate_html(movie_data, showtimes):
+def generate_html(movie_data, theaters, showtimes):
     env = Environment(loader=FileSystemLoader("generate_html/templates"))
     template = env.get_template("index.html.j2")
     table_template = env.get_template("table.html.j2")
     print(movie_data[0])
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    formatted_date = datetime.datetime.now().strftime("%A %B, %d %Y")
+    print("DATE", current_date)
+
+    # NOTE: index and index-<today> will just have the same code I think
     with open("src/index.html", "w") as f:
-        f.write(template.render(movies=movie_data))
+        f.write(table_template.render(movies=movie_data, theaters=theaters, date=formatted_date))
     
-    with open("src/table.html", "w") as f:
-        f.write(table_template.render(movies=movie_data))
+    with open(f"src/table-{current_date}.html", "w") as f:
+        f.write(table_template.render(movies=movie_data, theaters=theaters, date=formatted_date))
+
+    with open(f"src/table.html", "w") as f:
+        f.write(table_template.render(movies=movie_data, theaters=theaters, date=formatted_date))
 
 
 def handle_generate(cursor, table, date):
+    theaters = get_all_theaters(cursor)
     showtimes = get_showtimes_for_today(cursor, table, date)
     grouped = group_movies_by_title(showtimes)
-    generate_html(grouped, showtimes)
+    generate_html(grouped, theaters, showtimes)
 
 
 """

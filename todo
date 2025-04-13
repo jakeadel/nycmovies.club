@@ -11,12 +11,19 @@ Frontend:
         - Minimal view with more of a spreadsheet look
         - Spreadsheet showtimes view?
         - nice mobile version
+        - Filter by time
+            - Automatically filter by current time
 
 Backend:
     Bugs:
         - Metrograph handle multiple times
     To do:
         - wburg cinema
+        - Generate html files for all dates
+
+General:
+    - How is date filtering going to work
+    - Set up script to run daily (github actions?)
 
 Thoughts:
     - Maybe everything should just be daily, and you can select which day you want (maybe pre-generate all that html)
