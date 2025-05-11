@@ -1,0 +1,27 @@
+<html lang="en">
+    <head>
+        <title>NYC MOVIES</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="styles/style.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-100 h-full flex flex-col">
+        <div class="header p-4">
+            <h1 class="page-title font-bold text-center text-5xl bg-red-100 py-4"><a href="https://nycmovies.club">NYC MOVIES . CLUB</a></h1>
+        </div>
+        <div class="calendar-wrapper w-full h-full p-4">
+            <div class="calendar flex flex-row w-full h-full flex-1">
+                <div class="column relative flex flex-col h-full w-full border-2 border-black transition-all duration-300">
+                    <span class="date w-full ml-auto text-center mr-auto text-2xl border-b-2 border-black">May 31</span>
+                    {% for time in times%}
+                        <div class="time-wrapper flex flex-row mt-10 w-full">
+                            <span class="time mb-0 mt-auto">{{ time }}</span>
+                            <div class="line bg-gray-400 h-0.5 w-full mb-2 mt-auto"></div>
+                        </div>
+                        {% endfor %}
+                    <div class="showtime absolute top-10 left-20 w-1/8 h-20 bg-gray-800"></div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
