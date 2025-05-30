@@ -97,7 +97,7 @@ def handle_crawl():
     conn.close()
 
 
-def handle_build():
+def handle_build(dest):
     conn = sqlite3.connect("movies.db")
     cursor = conn.cursor()
     date = datetime.now()
@@ -105,7 +105,7 @@ def handle_build():
     formatted_date = date.strftime('%Y-%m-%d')
     print("DATE", formatted_date)
 
-    handle_generate(cursor, table, date)
+    handle_generate(cursor, table, date, dest)
 
     conn.close()
 
@@ -119,6 +119,10 @@ if __name__ == "__main__":
     if action == 'crawl':
         handle_crawl()
     elif action == 'build':
-        handle_build()
+        try:
+            dest = sys.argv[2]
+        except IndexError:
+            raise Exception("No destination file argument provided")
+        handle_build(dest)
     else:
         print("Invalid input")

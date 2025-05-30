@@ -41,7 +41,10 @@ def parse_html():
                 time = time.text
 
                 date_string = f"{date} {month} {time} {current_year}"
-                formatted_date = datetime.strptime(date_string, "%d %B %I.%M%p %Y")
+                try:
+                    formatted_date = datetime.strptime(date_string, "%d %B %I.%M%p %Y")
+                except ValueError:
+                    print("Error parsing date for", title, "on", date_string)
                 showtime_year = current_year
                 if formatted_date.month < current_month:
                     showtime_year += 1

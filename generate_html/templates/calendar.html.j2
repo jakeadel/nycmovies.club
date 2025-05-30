@@ -4,23 +4,279 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="styles/style.css" rel="stylesheet">
+
+        <script>
+            document.addEventListener('DOMContentLoaded', () => {
+                initDateInUrl();
+                filterShowtimes();
+                initChecks();
+                filterTheaters();
+                offsetShowtimes();
+
+                document.querySelectorAll('.theater-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', () => {
+                        updateState();
+                        filterTheaters();
+                        offsetShowtimes();
+                    });
+                });
+
+                // Make highlighting the date always show the picker
+                const dateElem = document.getElementById('date');
+                dateElem.addEventListener('click', () => {
+                    document.getElementById('date').showPicker();
+                });
+
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const todayStr = `${yyyy}-${mm}-${dd}`;
+                dateElem.setAttribute('min', todayStr);
+                dateElem.setAttribute('value', todayStr);
+
+                dateElem.addEventListener('change', function (event) {
+                    const date = event.target.value;
+                    addDate(date);
+                });
+
+                document.querySelectorAll('.theater-checkbox').forEach(input => {
+                    input.addEventListener('change', () => {
+                        const label = input.closest('label');
+                        if (input.checked) {
+                            label.classList.add('active');
+                        } else {
+                            label.classList.remove('active');
+                        }
+                    });
+                });
+
+                function initDateInUrl() {
+                    const currentUrl = new URL(window.location);
+                    if (!currentUrl.searchParams.has('date')) {
+                        // Set today's date if no date is set
+                        const now = new Date();
+                        const yyyy = now.getFullYear();
+                        const mm = String(now.getMonth() + 1).padStart(2, '0');
+                        const dd = String(now.getDate()).padStart(2, '0');
+                        const todayStr = `${yyyy}-${mm}-${dd}`;
+                        addDate(todayStr);
+                    }
+                }
+
+                function filterTheaters() {
+                    const selectedTheaters = new Set(getSelectedTheaters().split(','));
+                    const theaterCols = document.querySelectorAll('.theater-col');
+                    theaterCols.forEach((theaterCol) => {
+                        console.log("name", theaterCol.dataset.name);
+                        if (selectedTheaters.has(theaterCol.dataset.name)) {
+                            theaterCol.style.display = '';
+                        }
+                        else {
+                            theaterCol.style.display = 'none';
+                            console.log("hide!")
+                        }
+                    });
+                }
+
+                function addDate(date) {
+                    if (date) {
+                        const url = new URL(window.location);
+
+                        url.searchParams.delete('date');
+                        url.searchParams.append('date', date);
+                        history.pushState({}, '', url);
+                    }
+                    filterShowtimes();
+                    offsetShowtimes();
+                }
+
+                function updateState() {
+                    const selectedTheaters = getSelectedTheaters();
+                    const url = new URL(window.location);
+                    url.searchParams.delete('theaters');
+                    url.searchParams.append('theaters', selectedTheaters);
+                    history.pushState({}, '', url);
+                }
+
+                function getSelectedTheaters() {
+                    return Array.from(document.querySelectorAll('.theater-checkbox:checked')).map((box) => box.value).join(',');
+                }
+
+                function initUrlParams() {
+                    const currentUrl = new URL(window.location);
+                    if (!currentUrl.searchParams.has('date') && !currentUrl.searchParams.has('theaters')) {
+                        // Set today's date
+                        const now = new Date();
+                        const yyyy = now.getFullYear();
+                        const mm = String(now.getMonth() + 1).padStart(2, '0');
+                        const dd = String(now.getDate()).padStart(2, '0');
+                        const todayStr = `${yyyy}-${mm}-${dd}`;
+                        currentUrl.searchParams.set('date', todayStr);
+
+                        // Set all theaters
+                        const allTheaters = Array.from(document.querySelectorAll('.theater-checkbox'))
+                            .map(checkbox => checkbox.value)
+                            .join(',');
+                        currentUrl.searchParams.set('theaters', allTheaters);
+
+                        history.pushState({}, '', currentUrl);
+                    }
+                }
+
+                function initChecks() {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const theatersFromURL = urlParams.get('theaters') ? urlParams.get('theaters').split(',') : [];
+                    const allCheckboxes = document.querySelectorAll('.theater-checkbox');
+
+                    if (theatersFromURL.length > 0) {
+                        allCheckboxes.forEach(checkbox => {
+                            const live = theatersFromURL.includes(checkbox.value);
+                            checkbox.checked = live;
+                            if (live) {
+                                checkbox.closest('label').classList.add('active');
+                            }
+                            
+                        });
+                    }
+                    else {
+                        allCheckboxes.forEach(checkbox => {
+                            checkbox.checked = true;
+                            const label = checkbox.closest('label');
+                            label.classList.add('active');
+                        });
+                    }
+                }
+
+                function filterShowtimes() {
+                    const urlParams = new URLSearchParams(document.location.search);
+                    const dateParam = urlParams.get("date");
+                    const theatersParam = urlParams.get("theaters");
+
+                    if (!dateParam && !theatersParam) {
+                        return;
+                    }
+
+                    const validTheaters = new Set(theatersParam?.split(',') || []);
+
+                    document.querySelectorAll('.showtime').forEach((showtime) => {
+                        const showtimeDate = showtime.dataset.date.split(' ')[0];
+                        const matchesDate = showtimeDate === dateParam;
+                        showtime.style.display = matchesDate ? '' : 'none';
+                    });
+                }
+
+                function offsetShowtimes() {
+                    const showtimeElement = document.querySelector('.showtime');
+                    showtimeElement.style.display = 'block';
+                    const showtimeHeight = showtimeElement.offsetHeight;
+                    showtimeElement.style.display = 'none'
+
+                
+                    document.querySelectorAll('.theater-col').forEach(theaterCol => {
+                        const showtimes = Array.from(
+                            theaterCol.querySelectorAll('.showtime')
+                        ).filter((elem) => elem.offsetHeight > 0);
+
+                        showtimes.sort((a, b) => a.offsetTop - b.offsetTop);
+
+                        // First pass get num overlaps, sequence of overlaps
+                        for (let i = 0; i < showtimes.length; i++) {
+                            const current = showtimes[i];
+                            current.lane = 0;
+                            current.overlaps = 0;
+                            current.seq = 0;
+
+                            for (let j = 0; j < i; j++) {
+                                const other = showtimes[j];
+                                const overlap = Math.abs(current.offsetTop - other.offsetTop) < showtimeHeight;
+                                const sameMargin = getComputedStyle(current).left === getComputedStyle(other).left;
+
+                                if (overlap && sameMargin) {
+                                    if (!other.overlaps) {
+                                        other.overlaps++;
+                                        other.seq++;
+                                    }
+                                    current.overlaps++;
+                                    current.seq = other.seq + 3;
+                                }
+                            }
+                        }
+                        // Second pass, every overlap % 0 = left 4em, every overlap % 1 = right 4em
+                        for (let i = 0; i < showtimes.length; i++) {
+                            const current = showtimes[i];
+                            if (current.overlaps) {
+                                let leftEm = 0;
+                                let rightEm = 0;
+                                if (current.seq === 0 || current.seq % 2 === 0) {
+                                    leftEm = 30;
+                                }
+                                else {
+                                    rightEm = 30;
+                                }
+                                current.style.left = `${leftEm}%`;
+                                current.style.right = `${rightEm}%`;
+                            }
+                        }
+                    });
+                }
+            });
+        </script>
     </head>
-    <body class="bg-gray-100 h-full flex flex-col">
+    <body class="bg-gray-100 flex flex-col overflow-y-scroll">
         <div class="header p-4">
             <h1 class="page-title font-bold text-center text-5xl bg-red-100 py-4"><a href="https://nycmovies.club">NYC MOVIES . CLUB</a></h1>
         </div>
-        <div class="calendar-wrapper w-full h-full p-4">
-            <div class="calendar flex flex-row w-full h-full flex-1">
-                <div class="column relative flex flex-col h-full w-full border-2 border-black transition-all duration-300">
-                    <span class="date w-full ml-auto text-center mr-auto text-2xl border-b-2 border-black">May 31</span>
-                    {% for time in times%}
-                        <div class="time-wrapper flex flex-row mt-10 w-full">
-                            <span class="time mb-0 mt-auto">{{ time }}</span>
-                            <div class="line bg-gray-400 h-0.5 w-full mb-2 mt-auto"></div>
+
+        <div class="calendar-wrapper relative h-[2500px] border-2 m-4 flex flex-col">
+            <div class="date-wrapper w-full bg-white sticky select-none top-0 z-10 flex border-black border-b-2">
+                <input type="date" id="date" class="date select-none w-fit ml-auto mr-auto mh-9 text-2xl border-2 rounded mt-1 mb-1 border-black bg-white font-bold">
+            </div>
+            <div class="theaters-select flex flex-row items-center bg-red-100 sticky top-[45px] z-10 justify-center flex-wrap gap-2 pt-2 pb-2 text-center">
+            {% for theater in theaters %}
+                <label class="theater-select-label bg-blue-600 text-white text-sm px-3 py-1 rounded-lg hover:bg-blue-700 transition cursor-pointer">
+                    <div class="check-wrapper">
+                        <input type="checkbox" class="theater-checkbox invisible hidden" value="{{ theater.name }}" checked>
+                        <span class="theater-select-span">{{ theater.name }}</span>
+                    </div>
+                </label>
+            {% endfor %}
+            </div>
+            <div class="theater-cols flex flex-row w-full h-full">
+            {% for theater in theaters %}
+                <div class="theater-col mr-auto ml-auto w-full h-full relative border-2 flex flex-col"
+                    data-name="{{ theater.name }}">
+                    <span class="text-center ml-auto mr-auto h-fit bg-red-100 sticky top-24 z-10 border-t-2 w-full font-bold text-l border-b-2">{{ theater.name }}</span>
+                    <div class="showtimes relative w-full h-full">
+                        {% for showtime in theater.showtimes %}
+                        <div class="showtime absolute flex flex-col pl-4 border-gray border-1 left-0 right-0 hover:z-10 ml-[3em] mr-1 bg-white rounded shadow-md top-[{{ showtime.calendar_offset }}%]" 
+                             data-date="{{ showtime.time }}"
+                             style="display: none">
+                            <div class="title mr-0 overflow-hidden whitespace-nowrap text-ellipsis font-bold text-xs">
+                                {{ showtime.title }}
+                            </div>
+                            <div class="showtime-metadata flex flex-row overflow-hidden whitespace-nowrap text-ellipsis">
+                                <div class="showtime-time text-xs text-gray-500 mr-2">
+                                    At: {{ showtime.display_time }}
+                                </div>
+                                <div class="showtime-runtime text-xs text-gray-500">
+                                    Runtime: {{ showtime.runtime }}
+                                </div>
+                            </div>
+                            
                         </div>
                         {% endfor %}
-                    <div class="showtime absolute top-10 left-20 w-1/8 h-20 bg-gray-800"></div>
+                        <div class="timeline-layer absolute top-0 left-0 w-full h-full -z-1">
+                        {% for time in times %}
+                            <div class="time-wrapper flex flex-row absolute w-full top-[{{time[1]}}%]">
+                                <span class="time mb1 mt-auto bg-white w-[4em] text-center rounded-tr-none rounded border-gray-400 border-2 text-xs">{{ time[0] }}</span>
+                                <div class="line bg-gray-400 h-0.5 w-full mt-0"></div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    </div>
                 </div>
+            {% endfor %}
             </div>
         </div>
     </body>

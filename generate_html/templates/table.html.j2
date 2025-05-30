@@ -8,7 +8,16 @@
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 // Filter from url in case this is a copied link
+
+                const content = document.getElementById('content');
+                content.style.display = 'none';
+                setTimeout(() => content.style.display = '', 0);
+
+                initUrlParams();
                 initChecks();
+                initDate();
+                initTime();
+                initSearch();
                 filterMovies();
 
                 document.querySelectorAll('.theater-checkbox').forEach(checkbox => {
@@ -17,24 +26,37 @@
                         filterMovies();
                     })
                 });
-                /*
-                let date = document.getElementById('date');
-                date.addEventListener('change', (event) => {
-                    console.log({event});
-                    let url = new URL(window.location);
-                    url.searchParams.delete('date');
-                    url.searchParams.append('date', event.target.value);
-                    history.pushState({}, '', url);
-                })
-                */
-                document.getElementById('date').addEventListener('change', function (e) {
-                    console.log("DATE CHANGE", e.target.value)
-                    const date = e.target.value; // YYYY-MM-DD
-                    if (date) {
-                        const query = window.location.search;
-                        window.location.href = `table-${date}.html${query}`;
+
+                document.getElementById('search-input').addEventListener('input', (event) => updateSearch(event));
+                document.getElementById('search-cancel').addEventListener('click', () => clearSearch());
+
+                // Get rid of keyboard when the user hits enter
+                document.getElementById('search-input').addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        this.blur();
                     }
                 });
+
+                document.getElementById('date').addEventListener('change', function (e) {
+                    const date = e.target.value; // YYYY-MM-DD
+                    console.log({date})
+                    document.getElementById('date').classList.add('active');
+                    document.getElementById('today').classList.remove('active');
+                    document.getElementById('tomorrow').classList.remove('active')
+                    addDate(date);
+                });
+
+                // Set min selectable date to today
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById("date").setAttribute('min', today);
+
+                document.getElementById('today').addEventListener('click', (event) => handleDateButton(event));
+                document.getElementById('tomorrow').addEventListener('click', (event) => handleDateButton(event));
+
+                document.getElementById('start-time').addEventListener('input', (event) => handleTimeInput(event));
+                document.getElementById('end-time').addEventListener('input', (event) => handleTimeInput(event));
+                document.getElementById('start-time').addEventListener('change', (event) => handleTimeChange(event));
+                document.getElementById('end-time').addEventListener('change', (event) => handleTimeChange(event));
 
                 document.querySelectorAll('.theater-checkbox').forEach(input => {
                     input.addEventListener('change', () => {
@@ -48,8 +70,257 @@
                 });
             });
 
+            function updateSearch(event) {
+                const value = event.target.value;
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.delete('search');
+                if (value) {
+                    document.getElementById('search-input').classList.add('active');
+                    currentUrl.searchParams.append('search', event.target.value);
+                }
+                else {
+                    document.getElementById('search-input').classList.remove('active');
+                }
+                history.replaceState({}, '', currentUrl);
+                filterMovies();
+            }
+
+            function clearSearch() {
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.delete('search');
+                const searchElem = document.getElementById('search-input');
+                searchElem.value = '';
+                searchElem.classList.remove('active');
+                history.replaceState({}, '', currentUrl);
+                filterMovies();
+            }
+
+            function initUrlParams() {
+                const currentUrl = new URL(window.location);
+                if (!currentUrl.searchParams.has('date') && !currentUrl.searchParams.has('theaters')) {
+                    // Set today's date
+                    const now = new Date();
+                    const yyyy = now.getFullYear();
+                    const mm = String(now.getMonth() + 1).padStart(2, '0');
+                    const dd = String(now.getDate()).padStart(2, '0');
+                    const todayStr = `${yyyy}-${mm}-${dd}`;
+                    currentUrl.searchParams.set('date', todayStr);
+
+                    // Set all theaters
+                    const allTheaters = Array.from(document.querySelectorAll('.theater-checkbox'))
+                        .map(checkbox => checkbox.value)
+                        .join(',');
+                    currentUrl.searchParams.set('theaters', allTheaters);
+                    history.pushState({}, '', currentUrl);
+                }
+            }
+
+            function initTime() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const startFromURL = urlParams.get('start-time');
+                const endFromURL = urlParams.get('end-time');
+                const startDisplay = document.getElementById('start-time-display');
+                const endDisplay = document.getElementById('end-time-display');
+ 
+                const startText = startFromURL || '00:00';
+                const endText = endFromURL || '23:59';
+                startDisplay.textContent = twentyFourToTwelveHour(startText);
+                endDisplay.textContent = twentyFourToTwelveHour(endText);
+
+                const startValue = timeToValue(startText);
+                const endValue = timeToValue(endText);
+                console.log({startValue, endValue});
+                document.getElementById('start-time').value = `${startValue}`;
+                document.getElementById('end-time').value = `${endValue}`;
+                document.getElementById('range-track').style.width = `${endValue - startValue}%`;
+
+                if (!startFromURL || !endFromURL) {
+                    addTime('00:00', '23:59');
+                }
+            }
+
+            function twentyFourToTwelveHour(time) {
+                let [hours, minutes] = time.split(':');
+                hours = parseInt(hours);
+                let am = hours < 12;
+                let hoursMod = hours % 12;
+
+                if (hoursMod === 0) {
+                    hoursMod = 12;
+                }
+                if (hours === 24) {
+                    hoursMod = 11;
+                    minutes = 59;
+                }
+                return `${hoursMod < 10 ? '0' : ''}${hoursMod}:${minutes}${am ? 'am' : 'pm'}`;
+            }
+
+            function updateTimeDisplay(startTime, endTime) {
+                if (startTime && endTime) {
+                    const startTimeDisplay = document.getElementById('start-time-display');
+                    const endTimeDisplay = document.getElementById('end-time-display');
+                    startTimeDisplay.textContent = twentyFourToTwelveHour(startTime);
+                    endTimeDisplay.textContent = twentyFourToTwelveHour(endTime);
+                }
+            }
+
+            function handleTimeInput(event) {
+                const start = document.getElementById('start-time');
+                const end = document.getElementById('end-time');
+
+                const range = document.getElementById('range-track');
+
+                const low = Math.min(start.value, end.value);
+                const high = Math.max(start.value, end.value);
+
+                range.style.left = `${low}%`;
+                range.style.right = `${high}%`;
+                range.style.width = `${high - low}%`;
+
+                const lowTime = valueToTime(low);
+                const highTime = valueToTime(high);
+
+                updateTimeDisplay(lowTime, highTime);
+            }
+
+            function handleTimeChange(event) {
+                const start = document.getElementById('start-time');
+                const end = document.getElementById('end-time');
+
+                const low = Math.min(start.value, end.value);
+                const high = Math.max(start.value, end.value);
+
+                const lowTime = valueToTime(low);
+                const highTime = valueToTime(high);
+
+                addTime(lowTime, highTime);
+            }
+
+            function addTime(startTime, endTime) {
+                if (startTime && endTime) {
+                    const url = new URL(window.location);
+
+                    url.searchParams.delete('start-time');
+                    url.searchParams.delete('end-time');
+                    url.searchParams.append('start-time', startTime);
+                    url.searchParams.append('end-time', endTime);
+
+                    history.pushState({}, '', url);
+                }
+                filterMovies();
+            }
+
+            function valueToTime(value) {
+                const total = Math.floor((value / 100) * 1440);
+                const hours = Math.floor(total / 60);
+                const minutes = (total % 60) - (total % 30);
+                return `${hours < 10 ? '0' : ''}${hours}:${minutes}${minutes < 10 ? '0' : ''}`;
+            }
+
+            function timeToValue(time) {
+                const [hours, minutes] = time.split(':');
+                return (((hours * 60) + minutes) / 1440);
+            }
+
+            function handleDateButton(event) {
+                // Remove all active date buttons first
+                document.getElementById('today').classList.remove('active');
+                document.getElementById('tomorrow').classList.remove('active');
+                document.getElementById('date').classList.remove('active');
+
+                const elems = Array.from(event.target.classList);
+                const element = document.getElementById(event.target.id);
+                if (!elems.includes('active')) {
+                    element.classList.add('active');
+                }
+                const now = new Date();
+                let targetDate;
+
+                if (event.target.id === 'today') {
+                    targetDate = now;
+                } else if (event.target.id === 'tomorrow') {
+                    targetDate = new Date(now);
+                    targetDate.setDate(now.getDate() + 1);
+                }
+
+                if (targetDate) {
+                    const yyyy = targetDate.getFullYear();
+                    const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(targetDate.getDate()).padStart(2, '0');
+                    const formatted = `${yyyy}-${mm}-${dd}`;
+                    document.getElementById('date').value = formatted;
+                    addDate(formatted);
+                }
+            }
+
+            function addDate(date) {
+                if (date) {
+                    const url = new URL(window.location);
+
+                    url.searchParams.delete('date');
+                    url.searchParams.append('date', date);
+                    history.pushState({}, '', url);
+                }
+                filterMovies();
+            }
+            
             function getSelectedTheaters() {
                 return Array.from(document.querySelectorAll('.theater-checkbox:checked')).map((box) => box.value).join(',');
+            }
+
+            function initSearch() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const searchFromURL = urlParams.get('search');
+                const searchInput = document.getElementById('search-input');
+
+                if (searchFromURL) {
+                    searchInput.value = searchFromURL;
+                    searchInput.classList.add('active');
+                }
+                else {
+                    searchInput.classList.remove('active');
+                }
+            }
+
+            function initDate() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const dateFromURL = urlParams.get('date');
+
+                const todayBtn = document.getElementById('today');
+                const tomorrowBtn = document.getElementById('tomorrow');
+                const customBtn = document.getElementById('date');
+
+                // Clear previous active states
+                todayBtn.classList.remove('active');
+                tomorrowBtn.classList.remove('active');
+                customBtn.classList.remove('active');
+
+                // Default to today if no param
+                if (!dateFromURL) {
+                    todayBtn.classList.add('active');
+                    return;
+                }
+
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const todayStr = `${yyyy}-${mm}-${dd}`;
+
+                const tomorrow = new Date(today);
+                tomorrow.setDate(today.getDate() + 1);
+                const tmm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+                const tdd = String(tomorrow.getDate()).padStart(2, '0');
+                const tomorrowStr = `${tomorrow.getFullYear()}-${tmm}-${tdd}`;
+
+                if (dateFromURL === todayStr) {
+                    todayBtn.classList.add('active');
+                } else if (dateFromURL === tomorrowStr) {
+                    tomorrowBtn.classList.add('active');
+                } else {
+                    customBtn.classList.add('active');
+                    customBtn.value = dateFromURL;
+                }
             }
 
             function initChecks() {
@@ -59,11 +330,19 @@
 
                 if (theatersFromURL.length > 0) {
                     allCheckboxes.forEach(checkbox => {
-                        checkbox.checked = theatersFromURL.includes(checkbox.value);
+                        const live = theatersFromURL.includes(checkbox.value);
+                        checkbox.checked = live;
+                        if (live) {
+                            checkbox.closest('label').classList.add('active');
+                        }
+                        
                     });
-                } else {
+                }
+                else {
                     allCheckboxes.forEach(checkbox => {
                         checkbox.checked = true;
+                        const label = checkbox.closest('label');
+                        label.classList.add('active');
                     });
                 }
             }
@@ -76,28 +355,79 @@
                 history.pushState({}, '', url);
             }
 
+            // 0 = EQ, 1 = LEQ, 2 = GEQ
+            function showtimeCompTime(showtime, time) {
+                const [showHour, showMinutes, temp] = showtime.split(':').map((str) => parseInt(str));
+                const [hour, minutes] = time.split(':').map((str) => (parseInt(str)));
+                if (showHour === hour && showMinutes === minutes) {
+                    return 0;
+                }
+                else if (showHour < hour || (showHour === hour && showMinutes <= minutes)) {
+                    return 1;
+                }
+                else {
+                    return 2;
+                }
+            }
+
+
+            function isValidTime(startTime, endTime, showtime) {
+                if ([0, 2].includes(showtimeCompTime(showtime, startTime)) &&
+                    [0, 1].includes(showtimeCompTime(showtime, endTime))) {
+
+                    return true;
+                }
+                return false;
+            }
+
             function filterMovies() {
                 const urlParams = new URLSearchParams(document.location.search);
                 const theatersParam = urlParams.get("theaters");
-                if (theatersParam === null) {
-                    // not been initialized, no filtering to do
+                const dateParam = urlParams.get("date");
+                const searchParam = urlParams.get("search")?.toLowerCase() || '';
+                const startTimeParam = urlParams.get("start-time");
+                const endTimeParam = urlParams.get("end-time");
+
+                if (theatersParam === null && dateParam === null) {
                     return;
                 }
-                const validTheaters = new Set(theatersParam.split(','));
+
+                const validTheaters = new Set(theatersParam?.split(',') || []);
                 const movies = document.querySelectorAll('.movie-wrapper');
 
                 movies.forEach((movie) => {
-                    let hasShowtimes = false;
-                    movie.querySelectorAll('.theater').forEach((theater) => {
-                        if (validTheaters.has(theater.dataset.theater)) {
-                            theater.style.display = '';
-                            hasShowtimes = true;
-                        }
-                        else {
-                            theater.style.display = 'none';
-                        }
-                    });
-                    movie.style.display = hasShowtimes ? '' : 'none';
+                    let hasMatchingTheaterAndDate = false;
+
+                    const titleText = movie.querySelector('.title')?.textContent?.toLowerCase() || '';
+                    const matchesSearch = titleText.includes(searchParam);
+
+                    if (matchesSearch) {
+                        movie.querySelectorAll('.theater').forEach((theater) => {
+                            const isTheaterVisible = validTheaters.has(theater.dataset.theater);
+                            let hasValidShowtime = false;
+
+                            if (isTheaterVisible) {
+                                theater.querySelectorAll('.showtime').forEach((showtime) => {
+                                    const [showtimeDate, showtimeTime] = showtime.dataset.date.split(' '); // get just yyyy-mm-dd
+                                    const matchesDate = showtimeDate === dateParam;
+                                    const matchesTime = isValidTime(startTimeParam, endTimeParam, showtimeTime);
+
+                                    showtime.style.display = (matchesDate && matchesTime) ? '' : 'none';
+                                    if (matchesDate && matchesTime) {
+                                        hasValidShowtime = true;
+                                    }
+                                });
+                            }
+
+                            if (isTheaterVisible && hasValidShowtime) {
+                                theater.style.display = '';
+                                hasMatchingTheaterAndDate = true;
+                            } else {
+                                theater.style.display = 'none';
+                            }
+                        });
+                    }
+                    movie.style.display = hasMatchingTheaterAndDate ? '' : 'none';
                 });
             }
         </script>
@@ -105,17 +435,34 @@
     <body class="bg-gray-100">
         <div class="header p-4">
             <h1 class="page-title font-bold text-center text-5xl bg-red-100 py-4"><a href="https://nycmovies.club"><p>NYC MOVIES . CLUB</p></a></h1>
-            <h1>Films showing {{ date }}</h1>
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 mt-4 text-center">
+            <div class="flex flex-row items-center justify-center gap-2 mt-4 text-center">
+                <button id="today" class="date-button text-white text-sm px-3 py-1 rounded-lg hover:bg-blue-700 transition cursor-pointer">Today</button>
+                <button id="tomorrow" class="date-button text-black text-sm px-3 py-1 rounded-lg hover:bg-blue-700 transition cursor-pointer">Tomorrow</button>
                 <div>
-                    <label for="date">Change Date:</label>
-                    <input type="date" id="date" class="border rounded px-2 py-1">
+                    <input type="date" id="date" class="date-button border border-white rounded px-2 py-1 bg-white text-black text-sm">
                 </div>
             </div>
         </div>
-        <div id="theaters-select" class="theaters-select flex wrap gap-2">
+        <div id="time-select-wrapper" class="flex flex-col items-center justify-center mt-2 text-center ml-auto mr-auto w-auto">
+            <div id="time-display" class="flex flex-row justify-center items-center gap-2">
+                <span id="start-time-display" class="bg-white pointer-events-none text-sm px-2 py-1 rounded">12:00</span>
+                <div class="pointer-events-none"> - </div>
+                <span id="end-time-display" class="bg-white pointer-events-none text-sm px-2 py-1 rounded">12:00</span>
+            </div>
+            <div id="time-slider" class="relative appearance-none w-[200px] h-6 max-w-md mx-auto mt-2 mb-2">
+                <div id="range-track" class="absolute appearance-none h-1 z-2 mt-[6px] w-full bg-blue-500 rounded transform"></div>
+                <div id="range-track-under" class="absolute appearance-none h-1 z-1 mt-[6px] w-full bg-gray-500 rounded transform"></div>
+                <input type="range" id="start-time" min="0" max="100" value="0" default="0" step="2"
+                    class="absolute w-full pointer-events-none appearance-none bg-transparent z-30 left-0"
+                >
+                <input type="range" id="end-time" min="0" max="100" value="100" step="2"
+                    class="absolute w-full pointer-events-none appearance-none bg-transparent z-20 left-0"
+                >
+            </div>
+        </div>
+        <div id="theaters-select" class="theaters-select flex flex-row items-center justify-center gap-2 mt-4 text-center">
             {% for theater in theaters %}
-                <label class="theater-select-label px-4 py-2 rounded shadow cursor-pointer border-blue-600 border-2">
+                <label class="theater-select-label bg-blue-600 text-white text-sm px-3 py-1 rounded-lg hover:bg-blue-700 transition cursor-pointer">
                     <div class="check-wrapper">
                         <input type="checkbox" class="theater-checkbox invisible hidden" value="{{ theater }}" checked>
                         <span class="theater-select-span">{{ theater }}</span>
@@ -123,14 +470,21 @@
                 </label>
             {% endfor %}
         </div>
-        <div class="content px-4 py-6 grid md:grid-cols-2 grid-cols-1 justify-center items-center gap-4">
+        <div id="search-wrapper" class="search-wrapper text-sm px-1 text-sm mt-4 rounded-lg bg-white">
+            <input id="search-input" class="search-input" inputmode="search" enterkeyhint="done" type="text" placeholder="Search here">
+            <button id="search-cancel" title="Clear" class="search-cancel cursor-pointer">
+                <svg class="w-full h-[24px]" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+            </button>
+        </div>
+        <div id="content" class="content px-4 py-6 grid md:grid-cols-2 lg:grid-cols-2 grid-cols-1 justify-center items-center gap-4">
         {% for movie in movies %}
             <div class="movie-wrapper mx-w-full self-start">
                 <div class="movie rounded w-full max-w-3xl ml-auto mr-auto bg-white shadow-md hover:shadow-lg transition-shadow duration-300 flex flex-col sm:flex-row overflow-hidden">
-                    <div class="image-wrapper p-1 sm:h-auto min-w-[200px] sm:flex-shrink-0 self-center sm:self-start">
-                        <img class="object-cover w-full h-auto" 
+                    <div class="image-wrapper p-1 sm:h-auto min-w-[200px] min-h-[300px] sm:flex-shrink-0 self-center sm:self-start">
+                        <img class="object-cover w-full max-w-[200px] h-auto" 
+                            loading="lazy"
                             src="{{ movie.image}}" 
-                            alt="Poster"
+                            alt="{{ movie.title }} Poster"
                         >
                     </div> 
                     <div class="details p-4 flex-1 flex flex-col justify-start">
@@ -149,18 +503,13 @@
                                 <div id="theater" class="theater" data-theater="{{ theater.name }}">
                                     <div class="text-xs font-semibold text-gray-700"><a href="{{ theater.link }}">{{ theater.name }}</a></div>
                                     <div class="flex flex-wrap gap-2 mt-1">
-                                    {% for showtime in theater.showtimes%}
+                                    {% for showtime in theater.showtimes %}
                                         <a href="{{ showtime.link }}" data-date="{{ showtime.time }}" id="showtime" class="showtime bg-blue-600 text-white text-sm px-3 py-1 rounded-lg hover:bg-blue-700 transition">{{ showtime.display_time }}</a>
                                     {% endfor %}
                                     </div>
                                 </div>
                             {% endfor %}
                             </div>
-                        </div>
-                        <div class="mt-6">
-                            <button class="w-full text-center text-blue-600 text-sm font-medium py-2 border border-blue-600 rounded-lg hover:bg-blue-50 transition">
-                                See showtimes for all dates
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -169,10 +518,3 @@
         </div>
     </body>
 </html>
-
-<!--Maybe not a table, but at least a nice list view-->
-<!--Maybe if you hover, the image displays-->
-<!--For SEO, need a page for each theater-->
-<!--Maybe for nyc neighborhoods as well-->
-<!--Spreadsheet pretty terrible for mobile-->
-<!--Mobile design is probably the most important thing-->
