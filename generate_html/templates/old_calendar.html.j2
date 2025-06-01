@@ -8,14 +8,16 @@
         <script>
             document.addEventListener('DOMContentLoaded', () => {
                 initDateInUrl();
-                //filterShowtimes();
+                filterShowtimes();
                 initChecks();
                 filterTheaters();
+                offsetShowtimes();
 
                 document.querySelectorAll('.theater-checkbox').forEach(checkbox => {
                     checkbox.addEventListener('change', () => {
                         updateState();
                         filterTheaters();
+                        offsetShowtimes();
                     });
                 });
 
@@ -86,6 +88,7 @@
                         history.pushState({}, '', url);
                     }
                     filterShowtimes();
+                    offsetShowtimes();
                 }
 
                 function updateState() {
@@ -97,9 +100,7 @@
                 }
 
                 function getSelectedTheaters() {
-                    return Array.from(document.querySelectorAll('.theater-checkbox:checked'))
-                        .map((box) => box.value)
-                        .join(',');
+                    return Array.from(document.querySelectorAll('.theater-checkbox:checked')).map((box) => box.value).join(',');
                 }
 
                 function initUrlParams() {
@@ -135,6 +136,7 @@
                             if (live) {
                                 checkbox.closest('label').classList.add('active');
                             }
+                            
                         });
                     }
                     else {
@@ -159,30 +161,74 @@
 
                     document.querySelectorAll('.showtime').forEach((showtime) => {
                         const showtimeDate = showtime.dataset.date.split(' ')[0];
-
-                        const matchesDate = showtimeDate >= dateParam;
+                        const matchesDate = showtimeDate === dateParam;
                         showtime.style.display = matchesDate ? '' : 'none';
+                    });
+                }
+
+                function offsetShowtimes() {
+                    const showtimeElement = document.querySelector('.showtime');
+                    showtimeElement.style.display = 'block';
+                    const showtimeHeight = showtimeElement.offsetHeight;
+                    showtimeElement.style.display = 'none'
+
+                
+                    document.querySelectorAll('.theater-col').forEach(theaterCol => {
+                        const showtimes = Array.from(
+                            theaterCol.querySelectorAll('.showtime')
+                        ).filter((elem) => elem.offsetHeight > 0);
+
+                        showtimes.sort((a, b) => a.offsetTop - b.offsetTop);
+
+                        // First pass get num overlaps, sequence of overlaps
+                        for (let i = 0; i < showtimes.length; i++) {
+                            const current = showtimes[i];
+                            current.lane = 0;
+                            current.overlaps = 0;
+                            current.seq = 0;
+
+                            for (let j = 0; j < i; j++) {
+                                const other = showtimes[j];
+                                const overlap = Math.abs(current.offsetTop - other.offsetTop) < showtimeHeight;
+                                const sameMargin = getComputedStyle(current).left === getComputedStyle(other).left;
+
+                                if (overlap && sameMargin) {
+                                    if (!other.overlaps) {
+                                        other.overlaps++;
+                                        other.seq++;
+                                    }
+                                    current.overlaps++;
+                                    current.seq = other.seq + 3;
+                                }
+                            }
+                        }
+                        // Second pass, every overlap % 0 = left 4em, every overlap % 1 = right 4em
+                        for (let i = 0; i < showtimes.length; i++) {
+                            const current = showtimes[i];
+                            if (current.overlaps) {
+                                let leftEm = 0;
+                                let rightEm = 0;
+                                if (current.seq === 0 || current.seq % 2 === 0) {
+                                    leftEm = 30;
+                                }
+                                else {
+                                    rightEm = 30;
+                                }
+                                current.style.left = `${leftEm}%`;
+                                current.style.right = `${rightEm}%`;
+                            }
+                        }
                     });
                 }
             });
         </script>
     </head>
-    <body class="flex flex-col overflow-y-scroll">
-        <div class="header m-4 border-1 border-black">
-            <h1 class="page-title font-bold text-center text-5xl bg-red-100 py-4">
-                <a href="https://nycmovies.club">NYC MOVIES . CLUB</a>
-            </h1>
-            <!--h3 class="bg-red-100 ml-auto mr-auto font-bold text-center border-t-1 border-black pt-0">* NOW SHOWING IN NYC *</h3-->
-            <div class="subhead flex flex-row justify-center bg-red-100 items-center gap-2 border-t-1 border-black text-center">
-                <h3 class="border-r-1 border-black flex items-center w-[50%] font-bold">
-                    <a class="w-full ml-auto mr-auto" href="/index.html">All Movies Showing</a>
-                </h3>
-                <h3 class="flex items-center w-[50%] font-bold">
-                    <a class="w-full ml-auto mr-auto" href="/calendar.html">All Showtimes</a>
-                </h3>
-            </div>
+    <body class="bg-gray-100 flex flex-col overflow-y-scroll">
+        <div class="header p-4">
+            <h1 class="page-title font-bold text-center text-5xl bg-red-100 py-4"><a href="https://nycmovies.club">NYC MOVIES . CLUB</a></h1>
         </div>
-        <div class="calendar-wrapper flex flex-col">
+
+        <div class="calendar-wrapper relative h-[2500px] border-2 m-4 flex flex-col">
             <div class="date-wrapper w-full bg-white sticky select-none top-0 z-10 flex border-black border-b-2">
                 <input type="date" id="date" class="date select-none w-fit ml-auto mr-auto mh-9 text-2xl border-2 rounded mt-1 mb-1 border-black bg-white font-bold">
             </div>
@@ -196,34 +242,40 @@
                 </label>
             {% endfor %}
             </div>
-            <div class="showtimes flex flex-col ml-auto mr-auto">
-            {% for date, showtimes in showtimes_by_date.items() %}
-                <section class="date-section ml-1 mr-1">
-                <h2 class="date ml-auto mr-auto mt-4 mb-2 text-3xl text-center font-bold">{{ date }}</h2>
-                    {% for showtime in showtimes %}
-                        <div class="showtime flex flex-col mt-4 border-b-1 border-gray cursor-default" 
-                                data-date="{{ showtime.showtime }}"
-                        >
-                            <div class="primary-data flex flex-row cursor-default items-center">
-                                <div class="showtime-time-wrapper w-[6em] text-l">
-                                    <a href="{{ showtime.showtime.link }}" class="showtime-time w-fit">
-                                        {{ showtime.display_time }}
-                                    </a>
+            <div class="theater-cols flex flex-row w-full h-full">
+            {% for theater in theaters %}
+                <div class="theater-col mr-auto ml-auto w-full h-full relative border-2 flex flex-col"
+                    data-name="{{ theater.name }}">
+                    <span class="text-center ml-auto mr-auto h-fit bg-red-100 sticky top-24 z-10 border-t-2 w-full font-bold text-l border-b-2">{{ theater.name }}</span>
+                    <div class="showtimes relative w-full h-full">
+                        {% for showtime in theater.showtimes %}
+                        <div class="showtime absolute flex flex-col pl-4 border-gray border-1 left-0 right-0 hover:z-10 ml-[3em] mr-1 bg-white rounded shadow-md top-[{{ showtime.calendar_offset }}%]" 
+                             data-date="{{ showtime.time }}"
+                             style="display: none">
+                            <div class="title mr-0 overflow-hidden whitespace-nowrap text-ellipsis font-bold text-xs">
+                                {{ showtime.title }}
+                            </div>
+                            <div class="showtime-metadata flex flex-row overflow-hidden whitespace-nowrap text-ellipsis">
+                                <div class="showtime-time text-xs text-gray-500 mr-2">
+                                    At: {{ showtime.display_time }}
                                 </div>
-                                <div class="showtime-title-wrapper w-[12em] text-xl">
-                                    <a href="{{ showtime.showtime_link }}" class="title font-bold w-fit">
-                                        {{ showtime.title }}
-                                    </a>
-                                </div>
-                                <div class="theater-wrapper w-[6em] ml-4 text-l">
-                                    <a href="{{ showtime.site_url }}" class="theater w-fit">
-                                        {{ showtime.theater_name }}
-                                    </a>
+                                <div class="showtime-runtime text-xs text-gray-500">
+                                    Runtime: {{ showtime.runtime }}
                                 </div>
                             </div>
+                            
                         </div>
-                    {% endfor %}
-                </section>
+                        {% endfor %}
+                        <div class="timeline-layer absolute top-0 left-0 w-full h-full -z-1">
+                        {% for time in times %}
+                            <div class="time-wrapper flex flex-row absolute w-full top-[{{time[1]}}%]">
+                                <span class="time mb1 mt-auto bg-white w-[4em] text-center rounded-tr-none rounded border-gray-400 border-2 text-xs">{{ time[0] }}</span>
+                                <div class="line bg-gray-400 h-0.5 w-full mt-0"></div>
+                            </div>
+                        {% endfor %}
+                        </div>
+                    </div>
+                </div>
             {% endfor %}
             </div>
         </div>

@@ -40,6 +40,7 @@ def get_all_showtimes(cursor, table):
 
     for result in results:
         result["calendar_offset"] = time_to_percent(result.get("showtime"))
+        result["display_time"] = format_date(result.get("showtime"))
     
     return results
 
@@ -59,7 +60,6 @@ def time_to_percent(time_str):
     else:
         pct = round((((hour - 10) * 60) + minutes) / total, 5)
 
-    print(f"{hour=}, {minutes=}, {pct*100=}")
     return pct * 100
 
 
@@ -101,6 +101,19 @@ def group_showtimes_by_theater(showtimes):
 
     # Sort theaters alpbabetically by name (may change)
     return sorted(theaters.values(), key=lambda t: t["name"])
+
+
+def group_showtimes_by_date(showtimes):
+    dates = {}
+
+    for show in showtimes:
+        date = show["showtime"][:10]
+        if date in dates:
+            dates[date].append(show)
+        else:
+            dates[date] = [show]
+
+    return dates
 
 
 def group_movies_by_title(showtimes):
@@ -166,20 +179,43 @@ def format_runtime(minutes):
     return f"{hours:01}:{minutes:02}"
 
 
-def generate_html(movie_data, theaters, theater_showtimes, dest):
+def generate_html(movie_data, theaters, theater_showtimes, showtimes_by_date, dest):
     env = Environment(loader=FileSystemLoader("generate_html/templates"))
     table_template = env.get_template("table.html.j2")
+    old_calendar_template = env.get_template("old_calendar.html.j2")
     calendar_template = env.get_template("calendar.html.j2")
 
     formatted_date = datetime.now().strftime("%A %B, %d %Y")
 
     # NOTE: index and index-<today> will just have the same code I think
     with open(f"{dest}/index.html", "w") as f:
-        f.write(table_template.render(movies=movie_data, theaters=theaters, date=formatted_date))
+        f.write(
+            table_template.render(
+            movies=movie_data,
+            theaters=theaters,
+            date=formatted_date
+            )
+        )
 
     with open(f"{dest}/table.html", "w") as f:
-        f.write(table_template.render(movies=movie_data, theaters=theaters, date=formatted_date))
-    
+        f.write(
+            table_template.render(
+                movies=movie_data,
+                theaters=theaters,
+                date=formatted_date
+            )
+        )
+ 
+    with open(f"{dest}/calendar.html", "w") as f:
+        f.write(
+            calendar_template.render(
+                movies=movie_data,
+                theaters=theater_showtimes,
+                showtimes_by_date=showtimes_by_date,
+                date=formatted_date
+            )
+        )   
+
     times = [
         ("10am", 0.0),
         ("11am", 6.67),
@@ -198,9 +234,9 @@ def generate_html(movie_data, theaters, theater_showtimes, dest):
         ("12am", 93.33)
     ]
 
-    with open(f"{dest}/calendar.html", "w") as f:
+    with open(f"{dest}/old_calendar.html", "w") as f:
         f.write(
-            calendar_template.render(
+            old_calendar_template.render(
                 movies=movie_data, 
                 theaters=theater_showtimes, 
                 date=formatted_date,
@@ -212,11 +248,8 @@ def generate_html(movie_data, theaters, theater_showtimes, dest):
 def handle_generate(cursor, table, date, dest):
     theaters = get_all_theaters(cursor)
     all_showtimes = get_all_showtimes(cursor, table)
+    showtimes_by_date = group_showtimes_by_date(all_showtimes)
     grouped = group_movies_by_title(all_showtimes)
     theater_showtimes = group_showtimes_by_theater(all_showtimes)
 
-    generate_html(grouped, theaters, theater_showtimes, dest)
-
-
-if __name__ == "__main__":
-    print(time_to_percent("2025-04-13 23:00:00"))
+    generate_html(grouped, theaters, theater_showtimes, showtimes_by_date, dest)
